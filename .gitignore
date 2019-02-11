@@ -1,0 +1,12 @@
+# ignore readme file
+README.md
+
+# ignore all .html files
+*.html
+
+# ignore some folder
+__pycache__/
+venv/
+.idea/
+.ipynb_checkpoints/
+
