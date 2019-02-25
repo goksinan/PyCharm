@@ -18,7 +18,10 @@ from scipy import stats
 from itertools import compress
 from sklearn.preprocessing import normalize
 
-import my_functions as my
+from my_functions.loading import *
+from my_functions.processing import *
+from my_functions.plotting import *
+
 
 ## Select processing
 things_to_run = [0]
@@ -51,7 +54,7 @@ video_name = maindir / subject / ses_names[session] / folder / 'trial{}.mp4'.for
 print('Processing......', subject, '-', ses_names[session], '-', folder, '-', 'trial{}.mat'.format(trial))
 
 ## Load data
-neural_data, emg_data, force_data, time, fs = my.load_data(file_name)
+neural_data, emg_data, force_data, time, fs = load_h5py_file(file_name)
 fs = int(fs)
 
 # Specify "good" channels
@@ -68,38 +71,38 @@ positions = Right2 + Right3 + Left1 + Left2 + Left3
 neural_data = neural_data[:, positions]
 
 # Filter data
-fneural = my.filter_file(neural_data, fs, 20, 2000, ftype='bandpass')
-femg = my.filter_file(emg_data, fs, 20, 1000, ftype='bandpass')
-fforce = my.filter_file(force_data, fs, 20)
+fneural = filter_data(neural_data, fs, 20, 2000, ftype='bandpass')
+femg = filter_data(emg_data, fs, 20, 1000, ftype='bandpass')
+fforce = filter_data(force_data, fs, 20)
 
 ## Play the video file
 if 1 in things_to_run:
-    my.play_video_file(str(video_name))
+    play_video_file(str(video_name))
 
 ## Take care of "BAD" signals
 if 2 in things_to_run:
-    keep = my.remove_saturated_parts(neural_data, satThresh, fs)  # logical indices (row)
+    keep = remove_saturated_parts(neural_data, satThresh, fs)  # logical indices (row)
     # keep = remove_saturated_channels(neural_data, satThresh, fs) # good channels (column)
     neural_data = neural_data[keep, :]
     emg_data = emg_data[keep, :]
     force_data = force_data[keep]
     time = np.arange(0, len(neural_data) / fs, 1 / fs)
 
-    fneural = my.filter_file(neural_data, fs, 20, 2000, ftype='bandpass')
-    femg = my.filter_file(emg_data, fs, 20, 1000, ftype='bandpass')
-    fforce = my.filter_file(force_data, fs, 20)
+    fneural = filter_data(neural_data, fs, 20, 2000, ftype='bandpass')
+    femg = filter_data(emg_data, fs, 20, 1000, ftype='bandpass')
+    fforce = filter_data(force_data, fs, 20)
 
 ## Plot raw data
 if 3 in things_to_run:
-    my.plot_figure(time, neural_data, 'time(s)', '(uV)', 'Raw neural', True)
-    my.plot_figure(time, emg_data, 'time(s)', '(uV)', 'Raw EMG', True)
-    my.plot_figure(time, force_data, 'time(s)', '(uV)', 'Raw force', True)
+    simple_plot(time, neural_data, 'time(s)', '(uV)', 'Raw neural', True)
+    simple_plot(time, emg_data, 'time(s)', '(uV)', 'Raw EMG', True)
+    simple_plot(time, force_data, 'time(s)', '(uV)', 'Raw force', True)
 
 ## Plot filtered data
 if 4 in things_to_run:
-    my.plot_figure(time, fneural, 'time(s)', '(uV)', 'Filtered neural', True)
-    my.plot_figure(time, femg, 'time(s)', '(uV)', 'Filtered EMG', True)
-    my.plot_figure(time, fforce, 'time(s)', '(uV)', 'Filtered force', True)
+    simple_plot(time, fneural, 'time(s)', '(uV)', 'Filtered neural', True)
+    simple_plot(time, femg, 'time(s)', '(uV)', 'Filtered EMG', True)
+    simple_plot(time, fforce, 'time(s)', '(uV)', 'Filtered force', True)
 
 ## Plot the frequency spectrum of the neural signal
 if 5 in things_to_run:
@@ -168,5 +171,5 @@ if 7 in things_to_run:
     # Enter window length and step size
     # Applying a los-pass or band-pass filter is optional
     # Enter only 1ow-cutoff for LFP
-    my.plot_correlogram(neural_data, 1024, 512, fs)
+    correlogram_plot(neural_data, 1024, 512, fs)
 
