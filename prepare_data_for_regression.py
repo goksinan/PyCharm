@@ -13,6 +13,7 @@ from pathlib import Path
 import glob
 import os
 import time
+import matplotlib
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,8 +35,8 @@ maindir = Path.home() / 'Documents' / 'DATA' / 'CCI'
 subject = 'CCI5'
 ses_names = ['112718', '120318', '120718', '121718', '121918']
 
-force_thresh = 0.05
-satThresh = 500
+force_threshold = 0.05
+saturation_threshold = 1000
 
 offsets_file_name = maindir / subject / 'baseline-offsets-CCI5.xlsx'
 offsets_all = load_excel_file(offsets_file_name,cell_range='B2:F4')
@@ -45,7 +46,12 @@ trials_file_name = maindir / subject / 'selected-trials.xlsx'
 trials_all = load_excel_file(trials_file_name, sheet_name='Sheet', cell_range='B2:E54')
 
 ## Process
-EXTRA = 0.25  # Extra data length to cut (in seconds)
+extra = 0.25  # Extra data length to cut (in seconds)
+CHANS = []
+RAW = []
+EMG = []
+trial_lengths = []
+cut_times = []
 
 for row in trials_all:
     # Unpack trial's info
@@ -82,7 +88,7 @@ for row in trials_all:
     fforce = filter_data(force_data, fs, 10)
 
     # Double check the start and end points if they include the EXTRA portion
-    EXTRA = int(EXTRA*fs)
+    EXTRA = int(extra*fs)
 
     if start_time - EXTRA + 1 < 1:
         print('START TIME ADJUSTED!')
@@ -100,11 +106,11 @@ for row in trials_all:
             ax_handle.plot(x_axis, y_axis, 'b', lw=2)
 
 
-    # Plot figure to examine
+    # Plot figure to examine. Will be reused over and over
     fig, axs = plt.subplots(3, 1, sharex=True)
     mngr = plt.get_current_fig_manager()
-    x, y, dx, dy = mngr.window.geometry().getRect()
-    mngr.window.setGeometry(1000, 50, 800, 800)
+    # x, y, dx, dy = mngr.window.geometry().getRect()
+    mngr.window.setGeometry(1000, 50, 600, 800)
 
     axs[0].plot(fforce); axs[0].grid(True); axs[0].set_title('Force')
     axs[1].plot(femg); axs[1].grid(True); axs[1].set_title('EMG')
@@ -114,4 +120,33 @@ for row in trials_all:
     plot_lines(axs[1], (start_time, end_time))
     plot_lines(axs[2], (start_time, end_time))
 
-    break
+    fig.show()
+    plt.pause(2)
+
+    # Detect EMG outlier (spike) and replace with median EMG
+    for channel in femg.T:
+        emg_std = np.std(channel)
+        emg_mean = np.mean(channel)
+        channel[channel > emg_mean + 6 * emg_std] = 6 * emg_std
+        channel[channel < emg_mean - 6 * emg_std] = -6 * emg_std
+
+    # Cut the desired portion from the data
+    neural_data = neural_data[start_time - EXTRA + 1:end_time + EXTRA, :]
+    emg_data = emg_data[start_time - EXTRA + 1:end_time + EXTRA, :]
+    force_data = force_data[start_time - EXTRA + 1:end_time + EXTRA]
+
+    # Bad channel detection based on saturation threshold
+    fneural = fneural[start_time - EXTRA + 1:end_time + EXTRA, :]
+    used_channels = np.arange(0,fneural.shape[1])
+    boolind = np.any(np.abs(fneural) > saturation_threshold, axis=0)
+    CHANS.append(used_channels[~boolind])
+
+    # Prepare ouput
+    RAW.append(neural_data)
+    EMG.append(emg_data)
+    trial_lengths.append(len(neural_data))
+    cut_times.append([EXTRA+1, len(neural_data)-EXTRA])
+
+    print('....DONE!')
+
+    plt.close(fig)
