@@ -88,9 +88,9 @@ for trial in trial_names:
     neural_data = neural_data[:, positions]
 
     # Filter data
-    fneural = filter_data(neural_data, fs, 80, 1500, ftype='bandpass')
-    femg = filter_data(emg_data, fs, 20, 1000, ftype='bandpass')
-    fforce = filter_data(force_data, fs, 10)
+    fneural = apply_fancy_filter(neural_data, fs, 80, 1500, ftype='bandpass')
+    femg = apply_fancy_filter(emg_data, fs, 20, 1000, ftype='bandpass')
+    fforce = apply_fancy_filter(force_data, fs, 10)
 
     # Plot figure to examine and click
     fig, axs = plt.subplots(3, 1, sharex=False)

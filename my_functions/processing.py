@@ -6,40 +6,37 @@ from scipy import stats
 from itertools import compress
 
 
-##
-def filter_data(data, fs, lc, hc=None, order=4, ftype=None, flag=False):
+## Design Second-order IIR Filter
+def design_fancy_filter(fs, lc, hc=None, order=4, ftype=None, flag=False):
     """
     Design a butterworth filter.
-    At least 3 arguments needed: data, filter cutoff, sample rate
+    At least 2 arguments needed: filter cutoff, sample rate
     Ex:
-       y = filter_file(x, 30, 16000)
+       y = design_fancy_filter(16000, 30)
+       y = design_fancy_filter(fs=10000, lc=30, hc=300, order=4, ftype=bandpass, flag=True)
+       return: sos coefficients
     """
     nyq = fs/2
-    fdata = np.empty(0)
 
-    if ftype is None:
+    if ftype is None or 'low':
         sos = signal.butter(order, lc/nyq, 'lowpass', output = 'sos')
-        fdata = signal.sosfiltfilt(sos, data, axis=0)
 
     if ftype is 'bandpass':
         wn = [lc/nyq, hc/nyq]
         sos = signal.butter(order, wn, 'bandpass', output = 'sos')
-        fdata = signal.sosfiltfilt(sos, data, axis=0)
 
     if ftype is 'bandstop':
         wn = [lc/nyq, hc/nyq]
         sos = signal.butter(order, wn, 'bandstop', output = 'sos')
-        fdata = signal.sosfiltfilt(sos, data, axis=0)
 
     if ftype is 'high':
         sos = signal.butter(order, lc/nyq, 'highpass', output = 'sos')
-        fdata = signal.sosfiltfilt(sos, data, axis=0)
 
     if flag is not False:
         w, h = signal.sosfreqz(sos)
         plt.figure(1)
-        plt.plot(float(fs * 0.5 / np.pi) * w, abs(h), label='order={}'.format(order))
-        plt.plot([0, 0.5 * fs], [np.sqrt(0.5), np.sqrt(0.5)],'--', label='sqrt(0.5)')
+        plt.plot(float(fs * 0.5 / np.pi) * w, abs(h), label='order={}'.format(order));
+        plt.plot([0, 0.5 * fs], [np.sqrt(0.5), np.sqrt(0.5)],'--', label='sqrt(0.5)');
         plt.title('Butterworth filter frequency response')
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Gain')
@@ -47,7 +44,47 @@ def filter_data(data, fs, lc, hc=None, order=4, ftype=None, flag=False):
         plt.legend(loc='best')
         plt.show()
 
-    return fdata
+    return sos
+
+
+## Apply fancy filter
+def apply_fancy_filter(data, fs, lc, hc=None, order=4, ftype=None):
+    """
+    Design a butterworth filter.
+    At least 3 arguments needed: data, filter cutoff, sample rate
+    Ex:
+       y = apply_fancy_filter(x, 30, 16000)
+       y = apply_fancy_filter(x, fs=10000, lc=30, hc=300, order=4, ftype=bandpass, flag=True)
+    """
+    sos = design_fancy_filter(fs, lc, hc, order, ftype)
+    return signal.sosfiltfilt(sos, data, axis=0)
+
+
+## Design Simple Low Pass Filter
+def design_butter_lowpass(fs, cutoff, order=5, flag=False):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)
+
+    if flag is not False:
+        # Plot the frequency response.
+        w, h = signal.freqz(b, a, worN=8000)
+        plt.figure()
+        plt.plot(0.5*fs*w/np.pi, np.abs(h), 'b')
+        plt.plot(cutoff, 0.5*np.sqrt(2), 'ko')
+        plt.axvline(cutoff, color='k')
+        plt.xlim(0, 0.5*fs)
+        plt.title("Lowpass Filter Frequency Response")
+        plt.xlabel('Frequency [Hz]')
+        plt.grid()
+
+    return b, a
+
+
+## Apply low-pass filter
+def apply_butter_lowpass(data, fs, cutoff, order=5):
+    b, a = design_butter_lowpass(fs, cutoff, order)
+    return signal.filtfilt(b, a, data, axis=0)
 
 
 ##
@@ -134,6 +171,7 @@ def remove_saturated_parts(neural, threshold, fs):
 def find_envelope(data, fs, N=512, hc=8):
     """
     Finds the envelope of signal using a windowing technique
+    :rtype: object
     :param data: signal whose envelope to be found
     :param fs: sampling rate for low-pass filter
     :param N: window length (default=512)
@@ -149,5 +187,5 @@ def find_envelope(data, fs, N=512, hc=8):
         if len(data) - e < N:
             data[e:] = np.ones(np.shape(data[e:])) * np.max(data[e:], axis=0)
 
-    env = filter_file(data, fs, hc)
+    env = apply_fancy_filter(data, fs, hc)
     return env

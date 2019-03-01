@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 
 plotly.offline.init_notebook_mode(connected=False)
 
-from my_functions.processing import filter_data
+from my_functions.processing import apply_fancy_filter
 
 def correlogram_plot(data, N, L, fs, lc=None, hc=None):
     """
@@ -25,9 +25,9 @@ def correlogram_plot(data, N, L, fs, lc=None, hc=None):
     fdata = np.array(data)
 
     if hc is not None:
-        fdata = filter_data(fdata, fs, lc, hc, ftype='bandpass')
+        fdata = apply_fancy_filter(fdata, fs, lc, hc, ftype='bandpass')
     elif lc is not None:
-        fdata = filter_data(fdata, fs, lc)
+        fdata = apply_fancy_filter(fdata, fs, lc)
 
     cols = int(shifts + 1)
     rows = int(fdata.shape[1] * (fdata.shape[1] - 1) * 0.5)

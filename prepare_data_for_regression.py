@@ -14,6 +14,7 @@ import glob
 import os
 import time
 import matplotlib
+import gc
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -53,7 +54,9 @@ EMG = []
 trial_lengths = []
 cut_times = []
 
-for row in trials_all:
+for count, row in enumerate(trials_all):
+    if count >10:
+        break
     # Unpack trial's info
     session = int(row[0])
     trial = str(row[1])
@@ -83,9 +86,9 @@ for row in trials_all:
     neural_data = neural_data[:, positions]
 
     # Filter data
-    fneural = filter_data(neural_data, fs, 80, 1500, ftype='bandpass')
-    femg = filter_data(emg_data, fs, 20, 1000, ftype='bandpass')
-    fforce = filter_data(force_data, fs, 10)
+    fneural = apply_fancy_filter(neural_data, fs, 80, 1500, ftype='bandpass')
+    femg = apply_fancy_filter(emg_data, fs, 20, 1000, ftype='bandpass')
+    fforce = apply_fancy_filter(force_data, fs, 10)
 
     # Double check the start and end points if they include the EXTRA portion
     EXTRA = int(extra*fs)
@@ -105,7 +108,7 @@ for row in trials_all:
             x_axis = (pnt, pnt)
             ax_handle.plot(x_axis, y_axis, 'b', lw=2)
 
-
+    """
     # Plot figure to examine. Will be reused over and over
     fig, axs = plt.subplots(3, 1, sharex=True)
     mngr = plt.get_current_fig_manager()
@@ -121,7 +124,8 @@ for row in trials_all:
     plot_lines(axs[2], (start_time, end_time))
 
     fig.show()
-    plt.pause(2)
+    plt.pause(0.1)
+    plt.close(fig) """
 
     # Detect EMG outlier (spike) and replace with median EMG
     for channel in femg.T:
@@ -147,6 +151,94 @@ for row in trials_all:
     trial_lengths.append(len(neural_data))
     cut_times.append([EXTRA+1, len(neural_data)-EXTRA])
 
-    print('....DONE!')
+    print('DONE!')
 
-    plt.close(fig)
+## Identify the commonly used channels within session
+""" How many times a channel appears in all trials? Keep the tally in a vector. """
+chan_vect = np.arange(RAW[0].shape[1])
+used_vect = np.zeros(RAW[0].shape[1])
+for chan in CHANS:
+    for x in chan:
+        used_vect[x] += 1
+
+""" There is a number-of-trials vs number-of-channels tradeof. Check how many channels we can keep to use 
+60 to 90 percent of all the trials """
+#pp = [0.9, 0.8, 0.7, 0.6]
+pp = [0.9]
+for item in pp:
+    common_chans = chan_vect[used_vect >= round(item * max(used_vect))]
+
+    count = 0
+    for chan in CHANS:
+        if len(list(set(common_chans).intersection(chan))) >= len(common_chans):
+            count += 1
+        else:
+            continue
+    print('To include {} % of trials:'.format(item*100))
+    print('{} channels will be used: '.format(len(common_chans)), common_chans)
+    print('Number of trials retained: ', count)
+    print('-------------------------------------')
+
+## Pick the desired channels, and trials that have those channels
+""" Construct a boolean list: If a trial's remaining channels include the desired/common channels (intersect),
+place a True in the list. If not, place a False. Use this list to choose trials. """
+#common_chans = [0,1,2,3,4,5,6,7,8,9,10,11,12]
+common_chans = list(common_chans)
+keep1 = []
+for chan in CHANS:
+    if len(list(set(common_chans).intersection(chan))) >= len(common_chans):
+        keep1.append(True)
+    else:
+        keep1.append(False)
+
+RAW = [item for i, item in enumerate(RAW) if keep1[i] is True]
+EMG = [item for i, item in enumerate(EMG) if keep1[i] is True]
+trial_lengths = [item for i, item in enumerate(trial_lengths) if keep1[i] is True]
+cut_times = [item for i, item in enumerate(cut_times) if keep1[i] is True]
+
+## Detect and eliminate abnormal EMG shape
+""" Unusually high amplitudes result in large peaks in EMG envelope. These outliers hinder the performance of 
+the regression. Eliminate those outliers (not just a part of the data, the whole trial itself) """
+maxemg = []
+for emg in EMG:
+    maxemg.append(np.max(np.abs(emg), axis=0))
+maxemg = np.array(maxemg)
+
+""" Construct a boolean array. Place a false if the trial is an outlier"""
+keep2 = np.ones((len(EMG)), dtype=bool)
+for item in maxemg.T:
+    q75, q50, q25 = np.percentile(item, [75, 50, 25])
+    iqr = q75 - q25
+    keep2 = keep2 & ~(item > q50 + 6 * iqr)
+keep2 = list(keep2)
+
+RAW = [item for i, item in enumerate(RAW) if keep2[i] & True]
+EMG = [item for i, item in enumerate(EMG) if keep2[i] & True]
+trial_lengths = [item for i, item in enumerate(trial_lengths) if keep2[i] & True]
+cut_times = [item for i, item in enumerate(cut_times) if keep2[i] & True]
+
+## Determine average trial length
+avelen = list(map(lambda x:(x-EXTRA*2)/fs, trial_lengths))
+print('Average trial length : {0:.2f} sec'.format(np.mean(avelen)))
+print('STD                  : {0:.2f} sec'.format(np.std(avelen)))
+
+## Prepare data set
+data = {
+    "raw" : np.concatenate(RAW, axis=0),
+    "emg" : np.concatenate(EMG, axis=0),
+    "cut-times" : cut_times,
+    "trial-lengths" : trial_lengths,
+    "channels" : common_chans,
+    "fs" : fs
+    }
+
+del(RAW, EMG)
+
+gc.collect()
+
+## Feature extraction
+from extract_features import extract_features
+dataset = extract_features(data)
+
+## Regression
+

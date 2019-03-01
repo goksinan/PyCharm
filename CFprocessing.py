@@ -71,9 +71,9 @@ positions = Right2 + Right3 + Left1 + Left2 + Left3
 neural_data = neural_data[:, positions]
 
 # Filter data
-fneural = filter_data(neural_data, fs, 20, 2000, ftype='bandpass')
-femg = filter_data(emg_data, fs, 20, 1000, ftype='bandpass')
-fforce = filter_data(force_data, fs, 20)
+fneural = apply_fancy_filter(neural_data, fs, 20, 2000, ftype='bandpass')
+femg = apply_fancy_filter(emg_data, fs, 20, 1000, ftype='bandpass')
+fforce = apply_fancy_filter(force_data, fs, 20)
 
 ## Play the video file
 if 1 in things_to_run:
@@ -88,9 +88,9 @@ if 2 in things_to_run:
     force_data = force_data[keep]
     time = np.arange(0, len(neural_data) / fs, 1 / fs)
 
-    fneural = filter_data(neural_data, fs, 20, 2000, ftype='bandpass')
-    femg = filter_data(emg_data, fs, 20, 1000, ftype='bandpass')
-    fforce = filter_data(force_data, fs, 20)
+    fneural = apply_fancy_filter(neural_data, fs, 20, 2000, ftype='bandpass')
+    femg = apply_fancy_filter(emg_data, fs, 20, 1000, ftype='bandpass')
+    fforce = apply_fancy_filter(force_data, fs, 20)
 
 ## Plot raw data
 if 3 in things_to_run:
