@@ -15,6 +15,7 @@ import os
 import time
 import matplotlib
 import gc
+from timeit import default_timer as timer
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -210,6 +211,9 @@ for item in maxemg.T:
     q75, q50, q25 = np.percentile(item, [75, 50, 25])
     iqr = q75 - q25
     keep2 = keep2 & ~(item > q50 + 6 * iqr)
+
+print('{} Outlier EMG shapes detected and removed'.format(sum(~keep2)))
+
 keep2 = list(keep2)
 
 RAW = [item for i, item in enumerate(RAW) if keep2[i] & True]

@@ -12,6 +12,13 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 
+def resample(x, newFs):
+    idx = [1 if num % newFs == 0 else 0 for num in range(len(x))]
+    idx = np.array(idx)
+    #return idx
+    return x[idx==1][:]
+
+
 def rms(x):
     """
     Root-mean square function
@@ -31,8 +38,8 @@ def find_pca(x):
     pca.fit(x);
     score = pca.transform(x)
     coef = pca.components_
-    latent = pca.explained_variance_
-    return coef, score, latent
+    explained = pca.explained_variance_ratio_
+    return coef, score, explained
 
 
 def find_pca_contributions(x, coef):
@@ -45,7 +52,8 @@ def find_pca_contributions(x, coef):
     x = x - np.mean(x, axis=0)
     cont = np.zeros(coef.shape)
     for i, row in enumerate(coef):
-        cont[:,i] = rms(x * coef)
+        cont[:,i] = rms(x*row)
+    return cont
 
 
 def extract_features(data):
@@ -59,12 +67,15 @@ def extract_features(data):
     hps = [200, 300, 400, 500, 600, 700, 800, 1500]
 
     input_data = []
+    used_pcs = []
     for lp, hp in zip(lps, hps):
         band = apply_fancy_filter(data['raw'][:, common_chans], fs, lp, hp, order=10, ftype='bandpass')
         band = StandardScaler().fit_transform(band)
-        coef, score, latent = find_pca(band)
+        coef, score, explained = find_pca(band)
         contributions = find_pca_contributions(band, coef)
+        score = score[:,np.cumsum(explained)<=0.95] # Only PCs that explains 95% of the variance
         input_data.append(score)
+        used_pcs.append(score.shape[1])
 
     input_data = np.concatenate(input_data, axis=1)
     emg_data = data['emg']
@@ -93,8 +104,8 @@ def extract_features(data):
     EMG = np.concatenate(EMG, axis=0)
 
     ## Downsample
-    NEURAL = signal.resample(NEURAL, int(len(NEURAL) / 100))
-    EMG = signal.resample(EMG, int(len(EMG) / 100))
+    NEURAL = resample(NEURAL, 100)
+    EMG = resample(EMG, 100)
 
     del (input_data, emg_data)
 
@@ -102,7 +113,9 @@ def extract_features(data):
     data = {
         "input": NEURAL,
         "output": EMG,
-        "cut-times": new_cut_times
+        "cut-times": new_cut_times,
+        "contributions": contributions,
+        "num_of_components": used_pcs
     }
 
     del (NEURAL, EMG)

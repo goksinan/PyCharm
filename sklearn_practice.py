@@ -288,3 +288,26 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 mean_squared_error(yt, yt_hat)
 mean_absolute_error(yt, yt_hat)
+
+
+## Non-linear regression
+from sklearn.neighbors import KNeighborsRegressor
+knn = KNeighborsRegressor(n_neighbors=5)
+knn.fit(XT, yT)
+
+# Training prediction
+yT_hat = knn.predict(XT)
+plt.plot(XT, yT, 'o', label='data')
+plt.plot(XT, yT_hat, '.', label='prediction')
+plt.legend(loc='best')
+plt.show()
+
+# Test prediction
+yt_hat = knn.predict(Xt)
+plt.plot(Xt, yt, 'o', label='data')
+plt.plot(Xt, yt_hat, '.', label='prediction')
+plt.legend(loc='best')
+plt.show()
+
+knn.score(Xt,yt)
+
