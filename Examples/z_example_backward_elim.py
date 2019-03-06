@@ -35,6 +35,8 @@ reg.fit(X, y)
 y_hat = reg.predict(X)
 
 ## My function
+import numpy as np
+
 def adjusted_r2_score(y, y_hat, n=None, k=None):
     SSresid = np.sum(np.square(y_hat-y))
     SStotal = np.sum(np.square(y-np.mean(y)))
@@ -65,9 +67,27 @@ mean_squared_error(y, y_hat)
 
 ## OLS method
 import statsmodels.formula.api as sm
-reg_OLS = sm.OLS(y, X).fit()
+X_new = np.hstack((np.ones((len(X), 1)), X))
+reg_OLS = sm.OLS(y, X_new).fit()
 reg_OLS.summary()
 
+## Null model comparision
+from sklearn.dummy import DummyRegressor
+null_model = DummyRegressor('mean')
+null_model.fit(X, y)
+y_hat = null_model.predict(X)
+H_null = r2_score(y, y_hat)
+
+num_iter = X.shape[1]
+M = []
+for i in range(num_iter):
+    reg = LinearRegression()
+    X_new = X[:, np.newaxis, i]
+    reg.fit(X_new, y)
+    y_hat = reg.predict(X_new)
+    M.append(r2_score(y, y_hat))
+
+M.index(max(M))
 
 
 
