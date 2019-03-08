@@ -1,6 +1,6 @@
-
-## Imports
-import numpy as np
+"""
+Linear regression using subset selection method
+"""
 
 ##
 def adjusted_r2_score(y, y_hat, n=None, k=None):
@@ -12,6 +12,9 @@ def adjusted_r2_score(y, y_hat, n=None, k=None):
     :param k: number of features
     :return: r2, adjusted r2
     """
+    # Imports
+    import numpy as np
+
     SSresid = np.sum(np.square(y_hat-y))  # residual sums of squares
     SStotal = np.sum(np.square(y-np.mean(y)))  # total sums of squares
     r2 = 1 - SSresid/SStotal  # r-squared
@@ -32,12 +35,15 @@ def cross_val(input_X, output_y, k=10, method='rsquared'):
     :param method: Performance criteria (rsquared, adjusted-rsquared)
     :return: Result of k-fold CV
     """
-    # Import module
+    # Imports
+    import numpy as np
     from sklearn.model_selection import KFold
     from sklearn.linear_model import LinearRegression
+
     # Work inside local scope
     X = np.array(input_X)
     y = np.array(output_y)
+
     # Work on splits
     kf = KFold(n_splits=k, random_state=0)
     scores = []
@@ -67,8 +73,10 @@ def regular_regress(input_X, output_y, method='rsquared'):
     :param method: Performance criteria (rsquared, adjusted-rsquared)
     :return:
     """
-    # Import module
+    # Imports
+    import numpy as np
     from sklearn.linear_model import LinearRegression
+
     # Work inside local scope
     X = np.array(input_X)
     y = np.array(output_y)
@@ -97,6 +105,9 @@ def forward_selection(input_X, output_y, method=None, validation=False, plot_fla
     :param plot_flag: Plot all best results
     :return: Best model result, features used in best model
     """
+    # Imports
+    import numpy as np
+
     # Work inside local scope
     X = np.array(input_X)
     y = np.array(output_y)
@@ -133,13 +144,19 @@ def forward_selection(input_X, output_y, method=None, validation=False, plot_fla
         ind.append(num_iter[max_ind])  # add feature to the best-feaures-list
         del num_iter[max_ind]  # remove feature from the will-be-tested-next list
 
+    # Insert full model performance to the list of best performances
+    best_models = [null_model] + best_models
+
     # Plotting
     if plot_flag is True:
         import matplotlib.pyplot as plt
-        plt.plot(np.arange(0,X.shape[1]+1), np.append(null_model, best_models), label='All');
-        plt.plot(best_models.index(max(best_models))+1 ,max(best_models), 'ro', label='Best');
+        plt.figure()
+        plt.plot(best_models, label='All');
+        plt.plot(best_models.index(max(best_models)) ,max(best_models), 'ro', label='Best');
+        plt.title('Forward selection, ' + method + ', CV:' + str(validation))
         plt.xlabel('Number of features')
         plt.ylabel('Score')
+        plt.xticks(np.arange(0,len(best_models)))
         plt.legend(loc='best')
         plt.grid()
 
@@ -164,6 +181,9 @@ def backward_elimination(input_X, output_y, method=None, validation=False, plot_
     :param plot_flag: Plot all best results
     :return: Best model result, features used in best model
     """
+    # Imports
+    import numpy as np
+
     # Work inside local scope
     X = np.array(input_X)
     y = np.array(output_y)
@@ -212,16 +232,20 @@ def backward_elimination(input_X, output_y, method=None, validation=False, plot_
         all_indices.append(list(num_iter))
 
     # Insert full model performance to the list of best performances
-    best_models = [full_model] + best_models
+    best_models = [full_model] + best_models + [null_model]
 
     # Plotting
     if plot_flag is True:
         import matplotlib.pyplot as plt
-        plt.plot(np.arange(0, X.shape[1] + 1), np.append(best_models, null_model), label='All');
+        plt.figure()
+        plt.plot(best_models, label='All');
         plt.plot(best_models.index(max(best_models)), max(best_models), 'ro', label='Best');
-        plt.title('Backward Elimination / ' + method)
+        plt.title('Backward Elimination, ' + method + ', CV:' + str(validation))
         plt.xlabel('Number of features')
         plt.ylabel('Score')
+        xtick_numbers = list(np.arange(0, len(best_models)))
+        xtick_labels = list(map(lambda n: str(n), list(reversed(xtick_numbers))))
+        plt.xticks(xtick_numbers, xtick_labels)
         plt.legend(loc='best')
         plt.grid()
 
@@ -235,7 +259,10 @@ def backward_elimination(input_X, output_y, method=None, validation=False, plot_
         return max(best_models), all_indices[max_ind]
 
 ## Load data
+# Imports
+import numpy as np
 from sklearn.datasets import load_diabetes
+
 diabetes = load_diabetes()
 X = diabetes.data
 y = diabetes.target
@@ -243,7 +270,8 @@ y = diabetes.target
 noise = np.random.uniform(0, 1, size=(len(X),10))
 
 X_new = np.hstack((noise, X))
-#forward_selection(X_new, y, method='adjusted_rsquared', validation=False, plot_flag=True)
 
-backward_elimination(X, y, method='rsquared', validation=False, plot_flag=True)
+forward_selection(X_new, y, method='adjusted_rsquared', validation=True, plot_flag=True)
+
+backward_elimination(X_new, y, method='adjusted_rsquared', validation=True, plot_flag=True)
 

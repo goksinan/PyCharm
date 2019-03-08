@@ -246,3 +246,8 @@ dataset = extract_features(data)
 
 ## Regression
 
+from my_functions.feature_selection import forward_selection, backward_elimination
+
+forward_selection(dataset['input'], dataset['output'][:,1], method='adjusted_rsquared', validation=False, plot_flag=True)
+
+backward_elimination(dataset['input'], dataset['output'][:,1], method='adjusted_rsquared', validation=True, plot_flag=True)
