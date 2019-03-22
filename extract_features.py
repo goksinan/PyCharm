@@ -87,25 +87,22 @@ def extract_features(data):
     ## Recover actual signal part
     NEURAL = []
     EMG = []
-    new_cut_times = []
     previous_length = 0
-    new_length = 0
 
     for idx in range(len(data['cut-times'])):
         st = data['cut-times'][idx][0] + previous_length
         ed = data['cut-times'][idx][1] + previous_length
         previous_length = previous_length + data['trial-lengths'][idx]
-        new_length = new_length + (ed - st)
         NEURAL.append(input_data[st:ed, :])
         EMG.append(emg_data[st:ed, :])
-        new_cut_times.append(new_length)
 
-    NEURAL = np.concatenate(NEURAL, axis=0)
-    EMG = np.concatenate(EMG, axis=0)
+    #NEURAL = np.concatenate(NEURAL, axis=0)
+    #EMG = np.concatenate(EMG, axis=0)
 
     ## Downsample
-    NEURAL = resample(NEURAL, 100)
-    EMG = resample(EMG, 100)
+    NEURAL = [resample(x, 100) for x in NEURAL]
+    EMG = [resample(x, 100) for x in EMG]
+    new_lengths = [len(x) for x in NEURAL]
 
     del (input_data, emg_data)
 
@@ -113,7 +110,7 @@ def extract_features(data):
     data = {
         "input": NEURAL,
         "output": EMG,
-        "cut-times": new_cut_times,
+        "cut-times": new_lengths,
         "contributions": contributions,
         "num_of_components": used_pcs
     }

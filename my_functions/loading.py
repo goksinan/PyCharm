@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import cv2
 import openpyxl
+import pickle
 
 
 def load_h5py_file(fname, offsets = [0, 0, 0]):
@@ -153,3 +154,13 @@ def load_excel_file(fname, sheet_name='Sheet1', cell_range=None):
         big_list.append(small_list)
 
     return np.array(big_list)
+
+
+## Using Python's pickle module to save and load objects
+def save_obj(obj, name ):
+    with open('Obj/'+ name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+def load_obj(name ):
+    with open('Obj/' + name + '.pkl', 'rb') as f:
+        return pickle.load(f)

@@ -56,7 +56,7 @@ trial_lengths = []
 cut_times = []
 
 for count, row in enumerate(trials_all):
-    if count >10:
+    if count >100:
         break
     # Unpack trial's info
     session = int(row[0])
@@ -238,7 +238,7 @@ data = {
 
 del(RAW, EMG)
 
-gc.collect()
+gc.collect();
 
 ## Feature extraction
 from extract_features import extract_features
